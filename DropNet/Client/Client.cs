@@ -8,6 +8,7 @@ using DropNet.Models;
 using RestSharp;
 using RestSharp.Deserializers;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
 
 namespace DropNet
 {
@@ -46,6 +47,21 @@ namespace DropNet
         private RestClient _restClient;
         private RestClient _restClientContent;
         private RequestHelper _requestHelper;
+
+        public WebProxy Proxy {
+            set
+            {
+
+                if (_restClient != null)
+                {
+                    _restClient.Proxy = value;
+                }
+                if (_restClientContent != null)
+                {
+                    _restClientContent.Proxy = value;
+                }
+            }
+        }
 
         /// <summary>
         /// Gets the directory root for the requests (full or sandbox mode)
@@ -128,6 +144,62 @@ namespace DropNet
             return string.Format("https://www.dropbox.com/1/oauth/authorize?oauth_token={0}{1}", userLogin.Token,
                 (string.IsNullOrEmpty(callback) ? string.Empty : "&oauth_callback=" + callback));
         }
+
+#if MONOTOUCH
+
+
+        public UserLogin GetTokenFromUrl(string url)
+        {
+            Uri u = new Uri(url);
+
+            return GetUserLoginFromParams(u.Query.Replace("?", ""));
+
+        }
+
+        /// <summary>
+        /// Fallback method to use the web browser.
+        /// </summary>
+        /// <param name="userLogin"></param>
+        /// <param name="callback"></param>
+        /// <returns></returns>
+        public string BuildWebAuthorizeUrlIOS()
+        {
+           
+
+            //Go 1-Liner!
+            return string.Format(
+                "https://www.dropbox.com/1/connect?k={0}&s={1}&dca=1&easl=1", _apiKey, GetSValue(_appsecret));
+        }
+
+        /// <summary>
+        /// Builds the app authorize URL for iOS. Tries to load the DropBox App if it's available.
+        /// </summary>
+        /// <returns>
+        /// the URL to call. Check it with UIApplication.SharedApplication.CanOpenUrl(new NSUrl(url))
+        /// </returns>
+        public string BuildAppAuthorizeUrlIOS()
+        {
+
+
+            //Go 1-Liner!
+            return string.Format(
+                "dbapi-1://1/connect?k={0}&s={1}&dca=1&easl=1", _apiKey, GetSValue(_appsecret));
+        }
+
+        private string GetSValue(string tokenSecret)
+        {
+            using (var cp = new SHA1CryptoServiceProvider())
+            {
+                byte[] buffer = System.Text.Encoding.ASCII.GetBytes(tokenSecret);
+                string hash = BitConverter.ToString(cp.ComputeHash(buffer));
+                hash = hash.Replace("-", "");
+                return hash.Substring(hash.Length -8);
+
+            }
+        }
+
+
+#endif
 
 #if !WINDOWS_PHONE
         private T Execute<T>(ApiType apiType, IRestRequest request) where T : new()
