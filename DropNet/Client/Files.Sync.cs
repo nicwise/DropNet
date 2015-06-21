@@ -161,7 +161,7 @@ namespace DropNet
             var response = _restClientContent.Execute<MetaData>(request);
 
             //TODO - Return something better here?
-            return response.Data;
+	        return response.Data;
         }
 
         /// <summary>
